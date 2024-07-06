@@ -3,7 +3,7 @@
 # Purpose: use the command line to edit 1 row of a CSV file
 
 if ARGV[0] == '-h'
-  puts "Usage: csv-row-editor <CSV FILE> [<ROW>]"
+  puts "Usage: csv-edit-row <CSV FILE> [<ROW>]"
   puts "  * if <ROW> is not specified a new row is added to bottom of the csv file"
   exit(0)
 end
