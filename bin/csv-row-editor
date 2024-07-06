@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+# Purpose: use the command line to edit 1 row of a CSV file
+
+if ARGV[0] == '-h'
+  puts "Usage: csv-row-editor <CSV FILE> [<ROW>]"
+  puts "  * if <ROW> is not specified a new row is added to bottom of the csv file"
+  exit(0)
+end
+
+require 'csv-utils'
+require 'tty-prompt'
+
+csv_file = ARGV[0]
+row_number = ARGV[1].to_i
+raise("#{csv_file} not found") unless File.exist?(csv_file)
+raise("CSV row number not specified") unless row_number >= 0
+
+csv_iterator = CSVUtils::CSVIterator.new(csv_file)
+raise("CSV row number exceeds max rows") if row_number > csv_iterator.size
+
+cnt = 0
+row =
+  if row_number == 0
+    csv_iterator.headers.each_with_object({}) { |header, obj| obj[header] = '' }
+  else
+    csv_iterator.detect { |_| cnt += 1; cnt == row_number }
+  end
+
+prompt = TTY::Prompt.new
+
+prompt.on(:keypress) do |event|
+  if event.value == "\u0013" # CTRL-s
+    new_csv_file = csv_file + '.' + Time.now.strftime('%Y%m%dT%H%M%S') + '.csv'
+    puts "\nsaving to #{new_csv_file}"
+    CSV.open(new_csv_file, 'w') do |out|
+      out << csv_iterator.headers
+      csv_iterator.each_with_index do |csv_row, idx|
+        if (idx + 1) == row_number
+          out << row.values
+        else
+          out << csv_row.values
+        end
+      end
+
+      if row_number == 0
+        out << row.values
+      end
+    end
+    exit(0)
+  elsif event.value == "\u0011" # CTRL-q
+    puts "\nquiting"
+    exit(0)
+  end
+end
+
+while true
+  choices = []
+  row.each do |column_name, column_value|
+    name = "#{column_name}: #{column_value}"
+    choices << {name: name, value: column_name}
+  end
+
+  choice = prompt.select((row_number == 0 ? 'Add?' : 'Edit?'), choices)
+  new_value = prompt.ask("#{choice}: ", value: row[choice])
+
+  row[choice] = new_value
+end
