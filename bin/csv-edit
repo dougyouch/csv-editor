@@ -1,0 +1,119 @@
+#!/usr/bin/env ruby
+
+# Purpose: use the command line to edit a CSV file
+
+if ARGV[0] == '-h'
+  puts "Usage: csv-edit <CSV FILE>"
+  exit(0)
+end
+
+require 'csv-utils'
+require 'tty-prompt'
+require 'io/console'
+
+csv_file = ARGV[0]
+raise("#{csv_file} not found") unless File.exist?(csv_file)
+
+def screen_width
+  @screen_width ||= (IO.console.winsize[1] - 10)
+end
+
+def escape_csv_value(value)
+  value
+    .gsub("\r", "\\r")
+    .gsub("\n", "\\n")
+    .gsub("\t", "\\t")
+end
+
+def csv_row_to_s(row_number, row)
+  str = "#{row_number}. "
+  sep = ''
+  row.each_with_index do |(k, v), idx|
+    if idx == 0 || v.to_s != ''
+      str += "#{sep}#{k}: #{escape_csv_value(v)}"
+      sep = ', '
+    end
+
+    break if str.size >= screen_width
+  end
+
+  if str.size > screen_width
+    return str[0..screen_width] + ' ...'
+  end
+
+  str
+end
+
+def add_row(csv_iterator)
+  csv_iterator.headers.each_with_object({}) { |header, obj| obj[header] = '' }
+end
+
+def pick_csv_row(prompt, rows, starting_row_idx, max_rows_to_display=100_000)
+  choices = [{name: '<< Add Row >>', value: nil}]
+  rows.each_with_index do |row, idx|
+    next unless idx >= starting_row_idx
+
+    row_number = idx + 1
+    choices << {name: csv_row_to_s(row_number, row), value: row}
+
+    break if choices.size > max_rows_to_display
+  end
+
+  prompt.select(('Pick row to edit'), choices)
+end
+
+def edit_row(prompt, row)
+  done = false
+  while !done
+    choices = [{name: '<< Done >>', value: true}]
+
+    row.each do |column_name, column_value|
+      name = "#{column_name}: #{column_value}"
+      choices << {name: name, value: column_name}
+    end
+
+    choice = prompt.select('Edit?', choices)
+    if choice == true
+      done = true
+      break
+    end
+
+    new_value = prompt.ask("#{choice}: ", value: row[choice])
+    row[choice] = new_value
+  end
+
+  row
+end
+
+csv_iterator = CSVUtils::CSVIterator.new(csv_file)
+rows = csv_iterator.to_a
+
+prompt = TTY::Prompt.new
+
+prompt.on(:keypress) do |event|
+  if event.value == "\u0013" # CTRL-s
+    new_csv_file = csv_file + '.' + Time.now.strftime('%Y%m%dT%H%M%S') + '.csv'
+    puts "\nsaving to #{new_csv_file}"
+    CSV.open(new_csv_file, 'wb') do |out|
+      out << csv_iterator.headers
+      rows.each do |row|
+        out << row.values
+      end
+    end
+    exit(0)
+  elsif event.value == "\u0011" # CTRL-q
+    puts "\nquiting"
+    exit(0)
+  end
+end
+
+while true
+  row = pick_csv_row(prompt, rows, 0, 100)
+
+  if row.nil?
+    row = add_row(csv_iterator)
+    rows << row
+  end
+
+  edit_row(prompt, row)
+end
