@@ -78,7 +78,7 @@ def edit_row(prompt, row)
       break
     end
 
-    new_value = prompt.ask("#{choice}: ", value: row[choice])
+    new_value = prompt.ask("#{choice}: ", value: row[choice].to_s)
     row[choice] = new_value
   end
 

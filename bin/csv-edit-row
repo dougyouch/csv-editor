@@ -62,7 +62,7 @@ while true
   end
 
   choice = prompt.select((row_number == 0 ? 'Add?' : 'Edit?'), choices)
-  new_value = prompt.ask("#{choice}: ", value: row[choice])
+  new_value = prompt.ask("#{choice}: ", value: row[choice].to_s)
 
   row[choice] = new_value
 end
