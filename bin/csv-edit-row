@@ -16,6 +16,8 @@ row_number = ARGV[1].to_i
 raise("#{csv_file} not found") unless File.exist?(csv_file)
 raise("CSV row number not specified") unless row_number >= 0
 
+PER_PAGE = (ARGV[2] || 11).to_i
+
 csv_iterator = CSVUtils::CSVIterator.new(csv_file)
 raise("CSV row number exceeds max rows") if row_number > csv_iterator.size
 
@@ -61,7 +63,7 @@ while true
     choices << {name: name, value: column_name}
   end
 
-  choice = prompt.select((row_number == 0 ? 'Add?' : 'Edit?'), choices)
+  choice = prompt.select((row_number == 0 ? 'Add?' : 'Edit?'), choices, per_page: PER_PAGE)
   new_value = prompt.ask("#{choice}: ", value: row[choice].to_s)
 
   row[choice] = new_value

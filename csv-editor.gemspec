@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = 'csv-editor'
-  s.version     = '0.1.5'
+  s.version     = '0.1.6'
   s.licenses    = ['MIT']
   s.summary     = 'CSV Editor'
   s.description = 'Command line CSV file editor'
